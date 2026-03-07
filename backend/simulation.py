@@ -53,6 +53,7 @@ def run_single_day(
     num_staff: int = 2,
     price: float = 5.00,
     base_customers_per_hour: float = 15,
+    demand_std_dev: float = 3.0,
     shift_hours: int = 8
 ) -> SimulationResult:
     """Run a single day simulation."""
@@ -67,11 +68,11 @@ def run_single_day(
         'total_customers': 0
     }
     
-    # Arrival rate: customers per minute
-    arrival_rate = base_customers_per_hour / 60
+    todays_customers_per_hour = max(1.0, random.gauss(base_customers_per_hour, demand_std_dev))
+    arrival_rate = todays_customers_per_hour / 60
     
     env.process(customer_generator(env, baristas, stats, arrival_rate, price))
-    env.run(until=shift_hours * 60)  # Convert hours to minutes
+    env.run(until=shift_hours * 60)
     
     avg_wait = np.mean(stats['wait_times']) if stats['wait_times'] else 0
     
@@ -88,22 +89,22 @@ def run_monte_carlo(
     num_staff: int = 2,
     price: float = 5.00,
     base_customers_per_hour: float = 15,
+    demand_std_dev: float = 3.0,
+    shift_hours: int = 8,
     staff_cost_per_day: float = 150
 ) -> Dict:
-    """
-    Run Monte Carlo simulation - the CORE of your "What-If" engine.
-    Runs the business hundreds of times to show probability distributions.
-    """
+    """Run Monte Carlo simulation across multiple days."""
     results = []
     
     for _ in range(num_simulations):
         day_result = run_single_day(
             num_staff=num_staff,
             price=price,
-            base_customers_per_hour=base_customers_per_hour
+            base_customers_per_hour=base_customers_per_hour,
+            demand_std_dev=demand_std_dev,
+            shift_hours=shift_hours
         )
         
-        # Calculate profit
         total_staff_cost = num_staff * staff_cost_per_day
         profit = day_result.revenue - total_staff_cost
         
@@ -116,7 +117,6 @@ def run_monte_carlo(
             'total_customers': day_result.total_customers
         })
     
-    # Aggregate results into probability insights
     revenues = [r['revenue'] for r in results]
     profits = [r['profit'] for r in results]
     wait_times = [r['avg_wait_time'] for r in results]
@@ -163,6 +163,9 @@ def compare_scenarios(
     new_staff: int,
     new_price: float,
     base_customers_per_hour: float = 15,
+    demand_std_dev: float = 3.0,
+    current_shift_hours: int = 8,
+    new_shift_hours: int = 8,
     num_simulations: int = 500
 ) -> Dict:
     """
@@ -173,14 +176,18 @@ def compare_scenarios(
         num_simulations=num_simulations,
         num_staff=current_staff,
         price=current_price,
-        base_customers_per_hour=base_customers_per_hour
+        base_customers_per_hour=base_customers_per_hour,
+        demand_std_dev=demand_std_dev,
+        shift_hours=current_shift_hours
     )
     
     proposed = run_monte_carlo(
         num_simulations=num_simulations,
         num_staff=new_staff,
         price=new_price,
-        base_customers_per_hour=base_customers_per_hour
+        base_customers_per_hour=base_customers_per_hour,
+        demand_std_dev=demand_std_dev,
+        shift_hours=new_shift_hours
     )
     
     # Calculate improvement metrics
@@ -200,18 +207,3 @@ def compare_scenarios(
             'confidence': float(proposed['profit']['positive_probability'])
         }
     }
-
-
-# Quick test
-if __name__ == "__main__":
-    print("Running simulation test...")
-    result = compare_scenarios(
-        current_staff=2,
-        current_price=5.00,
-        new_staff=3,
-        new_price=5.00,
-        num_simulations=100
-    )
-    print(f"Current avg profit: ${result['current']['profit']['mean']:.2f}")
-    print(f"Proposed avg profit: ${result['proposed']['profit']['mean']:.2f}")
-    print(f"Recommendation: {result['comparison']['recommendation']}")

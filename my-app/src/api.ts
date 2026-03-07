@@ -5,6 +5,8 @@ export interface BusinessState {
   price: number;
   staff_count: number;
   customers_per_hour: number;
+  demand_std_dev: number;
+  operating_hours: number;
   staff_cost_per_day: number;
 }
 
@@ -12,6 +14,7 @@ export interface SimulationRequest {
   current: BusinessState;
   new_price?: number;
   new_staff?: number;
+  new_operating_hours?: number;
   num_simulations?: number;
 }
 
@@ -95,6 +98,34 @@ export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
     body: JSON.stringify(req),
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
+export interface CSVUploadResponse {
+  success: boolean;
+  avg_price: number;
+  customers_per_hour: number;
+  customers_std_dev: number;
+  avg_operating_hours: number;
+  staff_count: number;
+  staff_cost_per_day: number;
+  business_name: string | null;
+  rows_loaded: number;
+  columns_detected: Record<string, string | null>;
+  summary: string;
+}
+
+export async function uploadCSV(file: File): Promise<CSVUploadResponse> {
+  const content = await file.text();
+  const res = await fetch(`${API_BASE}/upload-csv`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: `API error: ${res.status}` }));
+    throw new Error(err.detail ?? `API error: ${res.status}`);
+  }
   return res.json();
 }
 
