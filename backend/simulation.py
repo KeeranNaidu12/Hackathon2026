@@ -192,10 +192,10 @@ def compare_scenarios(
         'current': current,
         'proposed': proposed,
         'comparison': {
-            'profit_change': profit_improvement,
+            'profit_change': float(profit_improvement),
             'profit_change_percent': float((profit_improvement / abs(current['profit']['mean'])) * 100) if current['profit']['mean'] != 0 else 0.0,
-            'revenue_change': revenue_improvement,
-            'wait_time_change': wait_time_change,
+            'revenue_change': float(revenue_improvement),
+            'wait_time_change': float(wait_time_change),
             'recommendation': 'RECOMMENDED' if profit_improvement > 0 else 'NOT RECOMMENDED',
             'confidence': float(proposed['profit']['positive_probability'])
         }
