@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   type BusinessState,
   type ChatResponse,
@@ -10,24 +10,44 @@ import {
   uploadCSV,
 } from '../api'
 
+type TemplateState = {
+  businessType?: string
+  businessName?: string
+  avgPrice?: number
+  customersPerDay?: number
+  staff?: number
+}
+
 function Simulator() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const templateState = (location.state as TemplateState | null) ?? null
+
+  const initialPrice = templateState?.avgPrice ?? 5.0
+  const initialStaff = templateState?.staff ?? 2
+  const initialOperatingHours = 8.0
+  const initialCustomersPerHour = templateState?.customersPerDay
+    ? Math.max(1, Math.round(templateState.customersPerDay / initialOperatingHours))
+    : 15
+  const initialBusinessName = templateState?.businessName ?? 'My Business'
 
   // Step 1 = CSV upload gate, Step 2 = full simulator
   const [step, setStep] = useState<'upload' | 'simulate'>('upload')
 
   // Business state (filled from CSV or defaults)
-  const [price, setPrice] = useState(5.0)
-  const [staff, setStaff] = useState(2)
-  const [customersPerHour, setCustomersPerHour] = useState(15)
+  const [price, setPrice] = useState(initialPrice)
+  const [staff, setStaff] = useState(initialStaff)
+  const [customersPerHour, setCustomersPerHour] = useState(initialCustomersPerHour)
   const [demandStdDev, setDemandStdDev] = useState(3.0)
-  const [operatingHours, setOperatingHours] = useState(8.0)
-  const [businessName, setBusinessName] = useState('My Business')
+  const [operatingHours, setOperatingHours] = useState(initialOperatingHours)
+  const [businessName, setBusinessName] = useState(initialBusinessName)
 
   // Proposed changes
-  const [newPrice, setNewPrice] = useState(5.5)
-  const [newStaff, setNewStaff] = useState(3)
-  const [newOperatingHours, setNewOperatingHours] = useState(8.0)
+  const [newPrice, setNewPrice] = useState(
+    Math.round(initialPrice * 1.1 * 100) / 100
+  )
+  const [newStaff, setNewStaff] = useState(initialStaff + 1)
+  const [newOperatingHours, setNewOperatingHours] = useState(initialOperatingHours)
 
   // CSV upload state
   const fileInputRef = useRef<HTMLInputElement>(null)

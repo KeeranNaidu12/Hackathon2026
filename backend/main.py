@@ -7,7 +7,12 @@ from typing import Optional
 import os
 import time
 
-from simulation import run_monte_carlo, compare_scenarios
+from simulation import (
+    run_monte_carlo,
+    compare_scenarios,
+    price_sensitivity_analysis,
+    profit_heatmap_analysis
+)
 from ai_parser import parse_user_query, generate_insight
 from csv_parser import parse_sales_csv
 
@@ -49,12 +54,30 @@ class ChatRequest(BaseModel):
     message: str
     business_state: BusinessState
 
+## Sensitivity Analysis Request
+class SensitivityRequest(BaseModel):
+    business_state: BusinessState
+    start_price: float = 2.0
+    end_price: float = 8.0
+    step: float = 0.5
+    num_simulations: int = 150
+##
+
+class HeatmapRequest(BaseModel):
+    business_state: BusinessState
+    min_staff: int = 1
+    max_staff: int = 5
+    start_price: float = 2.0
+    end_price: float = 8.0
+    step: float = 0.5
+    num_simulations: int = 80
+
 @app.get("/")
 def root():
     return {
         "message": "What-If Business Simulator API",
         "status": "running",
-        "endpoints": ["/simulate", "/chat", "/health"]
+        "endpoints": ["/simulate", "/chat", "/health", "/sensitivity/price"]
     }
 
 @app.get("/health")
@@ -178,6 +201,57 @@ def upload_csv(request: CSVUploadRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse CSV: {e}")
 
+
+
+## JSON endpoint for price sensitivity analysis
+@app.post("/sensitivity/price")
+def run_price_sensitivity(request: SensitivityRequest):
+    try:
+        result = price_sensitivity_analysis(
+            num_staff=request.business_state.staff_count,
+            start_price=request.start_price,
+            end_price=request.end_price,
+            step=request.step,
+            base_customers_per_hour=request.business_state.customers_per_hour,
+            demand_std_dev=request.business_state.demand_std_dev,
+            shift_hours=int(request.business_state.operating_hours),
+            num_simulations=request.num_simulations,
+            staff_cost_per_day=request.business_state.staff_cost_per_day
+        )
+
+        return {
+            "success": True,
+            "business_name": request.business_state.name,
+            "results": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+##
+@app.post("/heatmap/profit")
+def run_profit_heatmap(request: HeatmapRequest):
+    try:
+        result = profit_heatmap_analysis(
+            min_staff=request.min_staff,
+            max_staff=request.max_staff,
+            start_price=request.start_price,
+            end_price=request.end_price,
+            step=request.step,
+            base_customers_per_hour=request.business_state.customers_per_hour,
+            demand_std_dev=request.business_state.demand_std_dev,
+            shift_hours=int(request.business_state.operating_hours),
+            num_simulations=request.num_simulations,
+            staff_cost_per_day=request.business_state.staff_cost_per_day
+        )
+
+        return {
+            "success": True,
+            "business_name": request.business_state.name,
+            "results": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
