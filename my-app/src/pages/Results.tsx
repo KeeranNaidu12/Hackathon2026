@@ -1,9 +1,21 @@
 import { useNavigate } from 'react-router-dom'
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  AreaChart, Area, CartesianGrid, Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  Cell,
+  LineChart,
+  Line,
 } from 'recharts'
+import { fetchPriceSensitivity, fetchProfitHeatmap } from '../api'
 import type { SimulateResponse } from '../api'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,6 +23,9 @@ const dollarFormatter = (value: any) => [`$${value}`, '']
 
 function Results() {
   const navigate = useNavigate()
+  const [sensitivityData, setSensitivityData] = useState<any[]>([])
+  const [heatmapData, setHeatmapData] = useState<any[]>([])
+  const [heatmapBest, setHeatmapBest] = useState<any | null>(null)
 
   const data: SimulateResponse | null = useMemo(() => {
     try {
@@ -20,6 +35,69 @@ function Results() {
       return null
     }
   }, [])
+
+  useEffect(() => {
+    const loadSensitivity = async () => {
+      if (!data) return
+
+      try {
+        const sensitivity = await fetchPriceSensitivity({
+          business_state: {
+            name: data.business_name,
+            price: data.current_state.price,
+            staff_count: data.current_state.staff,
+            customers_per_hour: 15,
+            demand_std_dev: 3.0,
+            operating_hours: 8.0,
+            staff_cost_per_day: 150,
+          },
+          start_price: 2.0,
+          end_price: 8.0,
+          step: 0.5,
+          num_simulations: 100,
+        })
+
+        setSensitivityData(sensitivity.results.results)
+      } catch (error) {
+        console.error('Failed to load sensitivity data:', error)
+      }
+    }
+
+    loadSensitivity()
+  }, [data])
+
+  useEffect(() => {
+    const loadHeatmap = async () => {
+      if (!data) return
+
+      try {
+        const heatmap = await fetchProfitHeatmap({
+          business_state: {
+            name: data.business_name,
+            price: data.current_state.price,
+            staff_count: data.current_state.staff,
+            customers_per_hour: 15,
+            demand_std_dev: 3.0,
+            operating_hours: 8.0,
+            staff_cost_per_day: 150,
+          },
+          min_staff: 1,
+          max_staff: 5,
+          start_price: 2.0,
+          end_price: 8.0,
+          step: 1.0,
+          num_simulations: 50,
+        })
+
+        setHeatmapData(heatmap.results.cells)
+        setHeatmapBest(heatmap.results.best_cell)
+      } catch (error) {
+        console.error('Failed to load heatmap data:', error)
+      }
+    }
+
+    loadHeatmap()
+  }, [data])
 
   if (!data || !data.results) {
     return (
@@ -42,7 +120,6 @@ function Results() {
   const { current, proposed, comparison } = data.results
   const isGood = comparison.recommendation === 'RECOMMENDED'
 
-  // Data for the comparison bar chart
   const comparisonBarData = [
     {
       metric: 'Avg Revenue',
@@ -61,14 +138,24 @@ function Results() {
     },
   ]
 
-  // Data for wait time comparison
   const waitData = [
-    { metric: 'Avg Wait (min)', Current: +current.wait_time.mean.toFixed(1), Proposed: +proposed.wait_time.mean.toFixed(1) },
-    { metric: 'Max Wait (min)', Current: +current.wait_time.max.toFixed(1), Proposed: +proposed.wait_time.max.toFixed(1) },
-    { metric: 'Avg Lost Customers', Current: +current.customer_loss.mean.toFixed(1), Proposed: +proposed.customer_loss.mean.toFixed(1) },
+    {
+      metric: 'Avg Wait (min)',
+      Current: +current.wait_time.mean.toFixed(1),
+      Proposed: +proposed.wait_time.mean.toFixed(1),
+    },
+    {
+      metric: 'Max Wait (min)',
+      Current: +current.wait_time.max.toFixed(1),
+      Proposed: +proposed.wait_time.max.toFixed(1),
+    },
+    {
+      metric: 'Avg Lost Customers',
+      Current: +current.customer_loss.mean.toFixed(1),
+      Proposed: +proposed.customer_loss.mean.toFixed(1),
+    },
   ]
 
-  // Profit distribution (for area/heatmap chart)
   const percentiles = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
   const distributionData = percentiles.map((p, i) => ({
     percentile: `${p}%`,
@@ -79,7 +166,6 @@ function Results() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4 py-8">
       <div className="mx-auto max-w-6xl">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Simulation Results</h1>
@@ -95,7 +181,6 @@ function Results() {
           </button>
         </div>
 
-        {/* Recommendation Banner */}
         <div
           className={`rounded-2xl border p-6 mb-8 ${
             isGood
@@ -110,7 +195,8 @@ function Results() {
                 {isGood ? 'Change Recommended' : 'Proceed with Caution'}
               </h2>
               <p className="text-slate-300 mt-1">
-                Changing from <strong>${data.current_state.price.toFixed(2)}</strong> / <strong>{data.current_state.staff} staff</strong> to{' '}
+                Changing from <strong>${data.current_state.price.toFixed(2)}</strong> /{' '}
+                <strong>{data.current_state.staff} staff</strong> to{' '}
                 <strong className="text-cyan-400">${data.proposed_state.price.toFixed(2)}</strong> /{' '}
                 <strong className="text-cyan-400">{data.proposed_state.staff} staff</strong>
               </p>
@@ -120,14 +206,13 @@ function Results() {
                   ${Math.abs(comparison.profit_change).toFixed(2)}/day
                 </strong>{' '}
                 ({comparison.profit_change_percent >= 0 ? '+' : ''}
-                {comparison.profit_change_percent.toFixed(1)}%)
-                • Confidence: <strong>{proposed.profit.positive_probability.toFixed(0)}%</strong> chance of profit
+                {comparison.profit_change_percent.toFixed(1)}%) • Confidence:{' '}
+                <strong>{proposed.profit.positive_probability.toFixed(0)}%</strong> chance of profit
               </p>
             </div>
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             {
@@ -168,9 +253,7 @@ function Results() {
           ))}
         </div>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Revenue & Profit comparison */}
           <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-6">
             <h3 className="text-white font-semibold mb-4">💰 Revenue & Profit Comparison</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -194,7 +277,6 @@ function Results() {
             </ResponsiveContainer>
           </div>
 
-          {/* Wait Time & Customer Loss */}
           <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-6">
             <h3 className="text-white font-semibold mb-4">⏱️ Service Quality Comparison</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -218,7 +300,6 @@ function Results() {
           </div>
         </div>
 
-        {/* Profit Distribution Chart — the "Probability Cloud" */}
         <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-6 mb-8">
           <h3 className="text-white font-semibold mb-2">📈 Profit Probability Distribution</h3>
           <p className="text-slate-500 text-sm mb-4">
@@ -242,7 +323,114 @@ function Results() {
           </ResponsiveContainer>
         </div>
 
-        {/* Risk Insight Box */}
+        {sensitivityData.length > 0 && (
+          <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-6 mb-8">
+            <h3 className="text-white font-semibold mb-2">💡 Price Sensitivity Analysis</h3>
+            <p className="text-slate-500 text-sm mb-4">
+              Average daily profit across different price points, holding staffing constant.
+            </p>
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart data={sensitivityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis
+                  dataKey="price"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickFormatter={(v: number) => `$${v}`}
+                />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickFormatter={(v: number) => `$${Math.round(v)}`}
+                />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                  labelStyle={{ color: '#e2e8f0' }}
+                  formatter={(value) => [`$${Number(value).toFixed(0)}`, 'Avg Profit']}
+                  labelFormatter={(label) => `Price: $${label}`}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="avg_profit"
+                  stroke="#a78bfa"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  name="Avg Daily Profit"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {heatmapData.length > 0 && (
+          <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-6 mb-8">
+            <h3 className="text-white font-semibold mb-2">🟪 Profit Heatmap: Price × Staff</h3>
+            <p className="text-slate-500 text-sm mb-4">
+              Color shows average daily profit for each price and staffing combination.
+            </p>
+
+            {heatmapBest && (
+              <div className="mb-4 rounded-xl bg-slate-700/50 p-4">
+                <p className="text-sm text-slate-400">Best Combination</p>
+                <p className="text-white font-semibold mt-1">
+                  Price ${heatmapBest.price} with {heatmapBest.staff} staff
+                </p>
+                <p className="text-green-400 text-sm mt-1">
+                  Avg Profit: ${Math.round(heatmapBest.avg_profit)}/day
+                </p>
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <div
+                className="grid gap-2"
+                style={{ gridTemplateColumns: '80px repeat(7, minmax(60px, 1fr))' }}
+              >
+                <div></div>
+                {[2, 3, 4, 5, 6, 7, 8].map((price) => (
+                  <div key={price} className="text-center text-xs text-slate-400">
+                    ${price}
+                  </div>
+                ))}
+
+                {[1, 2, 3, 4, 5].map((staff) => (
+                  <div key={`row-${staff}`} className="contents">
+                    <div className="flex items-center text-xs text-slate-400">
+                      {staff} staff
+                    </div>
+
+                    {[2, 3, 4, 5, 6, 7, 8].map((price) => {
+                      const cell = heatmapData.find(
+                        (d) => d.staff === staff && d.price === price
+                      )
+
+                      const profit = cell?.avg_profit ?? 0
+
+                      let bg = 'bg-slate-700'
+                      if (profit > 600) bg = 'bg-green-400'
+                      else if (profit > 300) bg = 'bg-green-600'
+                      else if (profit > 0) bg = 'bg-yellow-500'
+                      else if (profit > -300) bg = 'bg-orange-500'
+                      else bg = 'bg-red-500'
+
+                      return (
+                        <div
+                          key={`${staff}-${price}`}
+                          className={`${bg} rounded-lg h-16 flex items-center justify-center text-xs font-medium text-white`}
+                          title={`Price $${price}, Staff ${staff}, Avg Profit $${Math.round(profit)}`}
+                        >
+                          ${Math.round(profit)}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-slate-700 bg-slate-800/60 p-6 mb-8">
           <h3 className="text-white font-semibold mb-3">🎯 Risk Insights</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -251,13 +439,21 @@ function Results() {
               <p className={`text-xl font-bold mt-1 ${proposed.profit.min >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 ${proposed.profit.min.toFixed(0)}/day
               </p>
-              <p className="text-xs text-slate-500 mt-1">10th percentile: ${proposed.profit.p10.toFixed(0)}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                10th percentile: ${proposed.profit.p10.toFixed(0)}
+              </p>
             </div>
+
             <div className="rounded-xl bg-slate-700/50 p-4">
               <p className="text-sm text-slate-400">Best-Case Profit</p>
-              <p className="text-xl font-bold mt-1 text-green-400">${proposed.profit.max.toFixed(0)}/day</p>
-              <p className="text-xs text-slate-500 mt-1">90th percentile: ${proposed.profit.p90.toFixed(0)}</p>
+              <p className="text-xl font-bold mt-1 text-green-400">
+                ${proposed.profit.max.toFixed(0)}/day
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                90th percentile: ${proposed.profit.p90.toFixed(0)}
+              </p>
             </div>
+
             <div className="rounded-xl bg-slate-700/50 p-4">
               <p className="text-sm text-slate-400">Customer Loss Risk</p>
               <p className={`text-xl font-bold mt-1 ${proposed.customer_loss.loss_probability < 10 ? 'text-green-400' : 'text-amber-400'}`}>
@@ -268,7 +464,6 @@ function Results() {
           </div>
         </div>
 
-        {/* Action buttons */}
         <div className="flex gap-4 justify-center">
           <button
             onClick={() => navigate('/simulation')}
