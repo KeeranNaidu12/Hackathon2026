@@ -16,6 +16,112 @@ class SimulationResult:
     customers_lost: int  # Left due to long wait
     total_customers: int
 
+
+## from here (adding sensitivity calculation)
+def price_sensitivity_analysis(
+    num_staff: int,
+    start_price: float = 2.0,
+    end_price: float = 8.0,
+    step: float = 0.5,
+    base_customers_per_hour: float = 15,
+    demand_std_dev: float = 3.0,
+    shift_hours: int = 8,
+    num_simulations: int = 150,
+    staff_cost_per_day: float = 150
+) -> Dict:
+    results = []
+    current_price = start_price
+
+    while current_price <= end_price + 1e-9:
+        sim = run_monte_carlo(
+            num_simulations=num_simulations,
+            num_staff=num_staff,
+            price=round(current_price, 2),
+            base_customers_per_hour=base_customers_per_hour,
+            demand_std_dev=demand_std_dev,
+            shift_hours=shift_hours,
+            staff_cost_per_day=staff_cost_per_day
+        )
+
+        results.append({
+            "price": round(current_price, 2),
+            "avg_profit": sim["profit"]["mean"],
+            "avg_revenue": sim["revenue"]["mean"],
+            "avg_wait_time": sim["wait_time"]["mean"],
+            "avg_customers_lost": sim["customer_loss"]["mean"],
+            "positive_profit_probability": sim["profit"]["positive_probability"]
+        })
+
+        current_price += step
+
+    best_point = max(results, key=lambda r: r["avg_profit"])
+
+    return {
+        "analysis_type": "price_sensitivity",
+        "best_price_point": best_point,
+        "results": results
+    }
+## to here
+
+## profit heatmap analysis across both price and staff levels
+def profit_heatmap_analysis(
+    min_staff: int = 1,
+    max_staff: int = 5,
+    start_price: float = 2.0,
+    end_price: float = 8.0,
+    step: float = 0.5,
+    base_customers_per_hour: float = 15,
+    demand_std_dev: float = 3.0,
+    shift_hours: int = 8,
+    num_simulations: int = 80,
+    staff_cost_per_day: float = 150
+) -> Dict:
+    prices = []
+    current_price = start_price
+    while current_price <= end_price + 1e-9:
+        prices.append(round(current_price, 2))
+        current_price += step
+
+    staff_levels = list(range(min_staff, max_staff + 1))
+    cells = []
+
+    best_cell = None
+
+    for staff in staff_levels:
+        for price in prices:
+            sim = run_monte_carlo(
+                num_simulations=num_simulations,
+                num_staff=staff,
+                price=price,
+                base_customers_per_hour=base_customers_per_hour,
+                demand_std_dev=demand_std_dev,
+                shift_hours=shift_hours,
+                staff_cost_per_day=staff_cost_per_day
+            )
+
+            cell = {
+                "staff": staff,
+                "price": price,
+                "avg_profit": sim["profit"]["mean"],
+                "avg_revenue": sim["revenue"]["mean"],
+                "avg_wait_time": sim["wait_time"]["mean"],
+                "avg_customers_lost": sim["customer_loss"]["mean"],
+                "positive_profit_probability": sim["profit"]["positive_probability"]
+            }
+
+            cells.append(cell)
+
+            if best_cell is None or cell["avg_profit"] > best_cell["avg_profit"]:
+                best_cell = cell
+
+    return {
+        "analysis_type": "profit_heatmap",
+        "prices": prices,
+        "staff_levels": staff_levels,
+        "best_cell": best_cell,
+        "cells": cells
+    }
+##
 def coffee_shop_customer(env, customer_id, baristas, stats, price, patience_minutes=10):
     """Simulate a single customer's journey through the coffee shop."""
     arrival_time = env.now
