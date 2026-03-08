@@ -163,13 +163,13 @@ Arrival process → Customer → Queue → Purchase decisions
 
 More formally:
 
-[
+$$
 P(P \mid C, W, products)
 \rightarrow
 W(queue \mid P, staff)
 \rightarrow
 E(t \mid prices, discounts)
-]
+$$
 
 ---
 
@@ -177,17 +177,17 @@ E(t \mid prices, discounts)
 
 Each arriving customer has a vector of attributes:
 
-[
+$$
 C = (age, spending, price_sensitivity, caffeine_pref, hot_pref)
-]
+$$
 
 ### Age Distribution
 
 A **two-component Gaussian mixture**
 
-[
+$$
 Age \sim \pi_1 N(\mu_1, \sigma_1^2) + (1-\pi_1)N(\mu_2,\sigma_2^2)
-]
+$$
 
 Example parameters:
 
@@ -204,20 +204,20 @@ This models **student vs professional demographics**.
 
 Spending is **LogNormal**:
 
-[
+$$
 X \sim LogNormal(\mu, \sigma)
-]
+$$
 
 MLE estimation:
 
-[
+$$
 \hat{\mu} = \frac{1}{n}\sum \ln x_i
-]
+$$
 
-[
+$$
 \hat{\sigma}^2 =
 \frac{1}{n}\sum (\ln x_i - \hat{\mu})^2
-]
+$$
 
 This captures the **right-skewed nature of transaction sizes**. 
 
@@ -225,23 +225,23 @@ This captures the **right-skewed nature of transaction sizes**.
 
 ### Price Sensitivity
 
-[
+$$
 PriceSensitivity \sim Beta(\alpha,\beta)
-]
+$$
 
 Estimated using **method of moments**:
 
-[
+$$
 \kappa = \frac{\bar{x}(1-\bar{x})}{s^2} - 1
-]
+$$
 
-[
+$$
 \alpha = \bar{x}\kappa
-]
+$$
 
-[
+$$
 \beta = (1-\bar{x})\kappa
-]
+$$
 
 This constrains sensitivity to **[0,1]**. 
 
@@ -251,12 +251,12 @@ This constrains sensitivity to **[0,1]**.
 
 Modeled with **logistic regression**:
 
-[
+$$
 p_{caff}(age)
 =============
 
 \frac{1}{1 + e^{-(\beta_0 + \beta_1 age)}}
-]
+$$
 
 Older customers are more likely to choose caffeinated drinks. 
 
@@ -266,10 +266,10 @@ Older customers are more likely to choose caffeinated drinks.
 
 Time-of-day dependence:
 
-[
+$$
 p_{hot}(t) =
 A + B\cos\left(\frac{\pi(t-\phi)}{10}\right)
-]
+$$
 
 Morning customers prefer hot drinks; afternoon customers prefer cold drinks. 
 
@@ -279,13 +279,13 @@ Morning customers prefer hot drinks; afternoon customers prefer cold drinks.
 
 Customer arrivals follow a **Non-Homogeneous Poisson Process (NHPP)**.
 
-[
+$$
 N(t) \sim Poisson(\lambda(t))
-]
+$$
 
 The rate varies over the day:
 
-[
+$$
 \lambda(t) =
 \sum_{k=1}^{3}
 A_k
@@ -293,7 +293,7 @@ A_k
 \left(
 -\frac{(t-\mu_k)^2}{2\sigma_k^2}
 \right)
-]
+$$
 
 representing:
 
@@ -307,7 +307,7 @@ representing:
 
 The arrival rate adjusts dynamically:
 
-[
+$$
 \lambda_{eff}(t)
 ================
 
@@ -318,7 +318,7 @@ discount_lift
 price_drag
 \times
 day_multiplier
-]
+$$
 
 Example:
 
@@ -339,10 +339,10 @@ Service is modeled as an **M/G/c queue**.
 
 Waiting time:
 
-[
+$$
 W_q =
 \max(0, t_{server_free} - t_{arrival})
-]
+$$
 
 ---
 
@@ -350,15 +350,15 @@ W_q =
 
 Per-item service time:
 
-[
+$$
 ServiceTime \sim LogNormal(\ln t_{make}, \sigma)
-]
+$$
 
 Total service time:
 
-[
+$$
 T = \sum_i ServiceTime_i
-]
+$$
 
 This captures **barista variability** and occasional slowdowns. 
 
@@ -366,15 +366,15 @@ This captures **barista variability** and occasional slowdowns.
 
 ### Customer Patience
 
-[
+$$
 Patience \sim LogNormal(\ln(8), 0.5)
-]
+$$
 
 Customers abandon if:
 
-[
+$$
 wait > patience
-]
+$$
 
 Median patience ≈ **8 minutes**. 
 
@@ -386,7 +386,7 @@ Customers choose products using a **Multinomial Logit model**.
 
 Utility of product (i):
 
-[
+$$
 u_i =
 pop_i
 
@@ -398,7 +398,7 @@ pop_i
 * 1.5 discount
 
 - 0.5 \frac{wait}{patience}
-  ]
+$$
 
 Choice probability:
 
