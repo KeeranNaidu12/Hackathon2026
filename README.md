@@ -144,6 +144,20 @@ Frontend will be at **http://localhost:5173**.
    - Customer loss risk
    - Recommendation (RECOMMENDED / NOT RECOMMENDED)
 
+4. **Price Sensitivity Analysis** - The simulator evaluates how pricing affects profitability by running Monte Carlo simulations across a range of prices.
+   Instead of testing just one price, the system:
+   - Generates a range of prices (for example $2 → $8)
+   - Runs multiple simulations for each price
+   - Calculates the average daily profit for each price level
+   - Visualizes the results using a profit vs price line chart
+
+5. **Profit Heatmap (Price × Staff)** - The Profit Heatmap analyzes profitability across combinations of price levels and staffing levels.
+   For each combination of:
+   - price
+   - number of staff
+   the simulator runs Monte Carlo simulations and calculates the expected daily profit.
+   The results are visualized as a heatmap grid.
+
 ### The AI Parser (`ai_parser.py`)
 
 - **With OpenAI API key**: Uses GPT-4o-mini to extract `price_change` and `staff_change` from plain English
