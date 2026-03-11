@@ -158,45 +158,6 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Hypothesis chips */}
-        <div style={{ textAlign: 'center', marginBottom: 64 }}>
-          <p style={{ fontSize: '0.8rem', fontWeight: 800, color: theme.textLight, letterSpacing: '0.1em', marginBottom: 16 }}>
-            TRY THESE SCENARIOS →
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-            {HYPOTHESES.map(h => (
-              <div
-                key={h.text}
-                onClick={() => navigate('/simulate')}
-                style={{
-                  background: theme.white,
-                  border: `2px solid ${theme.border}`,
-                  borderRadius: 50,
-                  padding: '8px 18px',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  color: theme.text,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as any).style.borderColor = theme.brownLight
-                  ;(e.currentTarget as any).style.transform = 'translateY(-2px)'
-                  ;(e.currentTarget as any).style.boxShadow = `0 6px 16px ${theme.brownLight}44`
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as any).style.borderColor = theme.border
-                  ;(e.currentTarget as any).style.transform = 'none'
-                  ;(e.currentTarget as any).style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'
-                }}
-              >
-                {h.icon} {h.text}
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Feature cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16, marginBottom: 48 }}>
           {FEATURES.map((f, i) => (
