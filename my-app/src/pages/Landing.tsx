@@ -155,25 +155,6 @@ export default function Landing() {
             >
               ☕ Start Simulating
             </button>
-            <button
-              onClick={() => navigate('/simulate')}
-              style={{
-                background: theme.matchaLight,
-                color: theme.matchaDark,
-                border: `2px solid ${theme.matcha}`,
-                borderRadius: 50,
-                padding: '14px 32px',
-                fontSize: '1rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontFamily: "'Nunito', sans-serif",
-                transition: 'transform 0.2s',
-              }}
-              onMouseEnter={e => ((e.currentTarget as any).style.transform = 'translateY(-2px)')}
-              onMouseLeave={e => ((e.currentTarget as any).style.transform = 'none')}
-            >
-              🍵 Quick Start
-            </button>
           </div>
         </div>
 
